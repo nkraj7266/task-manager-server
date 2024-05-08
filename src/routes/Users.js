@@ -42,6 +42,10 @@ router.post("/login", async (req, res) => {
 		return res.status(400).json("User does not exist");
 	}
 
+	if (user.role !== "user") {
+		return res.status(400).json("Unauthorized access");
+	}
+
 	if (user.password !== password) {
 		return res.status(400).json("Invalid credentials");
 	}

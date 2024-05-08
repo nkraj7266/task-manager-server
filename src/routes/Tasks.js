@@ -26,6 +26,10 @@ router.post("/create", async (req, res) => {
 		return res.status(400).json("User does not exist");
 	}
 
+	if (userExists.role !== "user") {
+		return res.status(400).json("Unauthorized access");
+	}
+
 	if (!createdTask) {
 		return res.status(400).json("Something went wrong while creating task");
 	}
@@ -40,6 +44,10 @@ router.get("/all/:userId", async (req, res) => {
 
 	if (!userExists) {
 		return res.status(400).json("User does not exist");
+	}
+
+	if (userExists.role !== "user") {
+		return res.status(400).json("Unauthorized access");
 	}
 
 	const tasks = await Tasks.findAll({ where: { userId } });
@@ -67,12 +75,22 @@ router.put("/edit/:id", async (req, res) => {
 		return res.status(400).json("Please keep required fields filled");
 	}
 
+	const userExists = await Users.findByPk(userId);
+
+	if (!userExists) {
+		return res.status(400).json("User does not exist");
+	}
+
+	if (userExists.role !== "user") {
+		return res.status(400).json("Unauthorized access");
+	}
+
 	const updatedTask = await Tasks.update(
 		{
 			title,
-			description: description || "",
-			priority: priority || "low",
-			status: status || "pending",
+			description,
+			priority,
+			status,
 			dueDate,
 			userId,
 		},
@@ -93,6 +111,16 @@ router.delete("/delete/:id", async (req, res) => {
 
 	if (!taskExist) {
 		return res.status(400).json("Task does not exist");
+	}
+
+	const userExists = await Users.findByPk(taskExist.userId);
+
+	if (!userExists) {
+		return res.status(400).json("User does not exist");
+	}
+
+	if (userExists.role !== "user") {
+		return res.status(400).json("Unauthorized access");
 	}
 
 	await Tasks.destroy({ where: { id } })
