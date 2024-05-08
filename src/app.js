@@ -32,9 +32,11 @@ app.use(express.json());
 
 // Routes Import
 const taskRouter = require("./routes/Tasks.js");
+const userRouter = require("./routes/Users.js");
 
 // Routes
 app.use("/api/v1/tasks", taskRouter);
+app.use("/api/v1/users", userRouter);
 
 // // Error Handling
 // app.use((req, res, next) => {
