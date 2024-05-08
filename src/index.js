@@ -10,6 +10,16 @@ const { app } = require("./app.js");
 
 let server;
 
+// const { Users } = require("./models");
+// Users.sync({ alter: true })
+// 	.then(() => console.log("Users table has been updated."))
+// 	.catch(console.error);
+
+// const { Tasks } = require("./models");
+// Tasks.sync({ alter: true })
+// 	.then(() => console.log("Tasks table has been updated."))
+// 	.catch(console.error);
+
 db.sequelize
 	.sync()
 	.then(() => {

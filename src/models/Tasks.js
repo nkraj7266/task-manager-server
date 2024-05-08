@@ -12,19 +12,20 @@ module.exports = (sequelize, DataTypes) => {
 		},
 		description: {
 			type: DataTypes.STRING,
-			allowNull: false,
+			allowNull: true,
+			defaultValue: "",
 		},
 		priority: {
 			type: DataTypes.STRING,
 			enum: ["low", "medium", "high"],
 			allowNull: false,
-			default: "low",
+			defaultValue: "low",
 		},
 		status: {
 			type: DataTypes.STRING,
 			enum: ["pending", "ongoing", "completed", "overdue"],
 			allowNull: false,
-			default: "pending",
+			defaultValue: "pending",
 		},
 		dueDate: {
 			type: DataTypes.DATE,
