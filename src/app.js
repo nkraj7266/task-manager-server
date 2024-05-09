@@ -21,7 +21,7 @@ const userRouter = require("./routes/Users.js");
 
 // Routes
 app.use("/api/v1/tasks", taskRouter);
-app.use("/api/v1/users", userRouter);
+app.use("/api/auth", userRouter);
 
 // Error Handling
 app.use((req, res, next) => {
