@@ -27,7 +27,20 @@ router.post("/register", async (req, res) => {
 		return res.status(400).json("Something went wrong while creating user");
 	}
 
-	res.json(createdUser);
+	const tokenData = {
+		user: {
+			id: loggedInUser.id,
+			name: loggedInUser.name,
+			email: loggedInUser.email,
+			role: loggedInUser.role,
+		},
+	};
+
+	const token = jwt.sign(tokenData, process.env.TOKEN_SECRET, {
+		expiresIn: "3d",
+	});
+
+	res.json({ token, user: createdUser });
 });
 
 router.post("/login", async (req, res) => {
@@ -61,10 +74,12 @@ router.post("/login", async (req, res) => {
 	}
 
 	const tokenData = {
-		id: loggedInUser.id,
-		name: loggedInUser.name,
-		email: loggedInUser.email,
-		role: loggedInUser.role,
+		user: {
+			id: loggedInUser.id,
+			name: loggedInUser.name,
+			email: loggedInUser.email,
+			role: loggedInUser.role,
+		},
 	};
 
 	const token = jwt.sign(tokenData, process.env.TOKEN_SECRET, {
