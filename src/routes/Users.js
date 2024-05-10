@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { Users } = require("../models");
+const jwt = require("jsonwebtoken");
 
 router.post("/register", async (req, res) => {
 	const { name, email, password } = req.body;
@@ -59,7 +60,18 @@ router.post("/login", async (req, res) => {
 		return res.status(400).json("Something went wrong while logging in");
 	}
 
-	res.json(loggedInUser);
+	const tokenData = {
+		id: loggedInUser.id,
+		name: loggedInUser.name,
+		email: loggedInUser.email,
+		role: loggedInUser.role,
+	};
+
+	const token = jwt.sign(tokenData, process.env.TOKEN_SECRET, {
+		expiresIn: "3d",
+	});
+
+	res.json({ token, user: loggedInUser });
 });
 
 router.post("/logout", async (req, res) => {

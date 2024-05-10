@@ -101,7 +101,7 @@ router.put("/edit/:id", async (req, res) => {
 		return res.status(400).json("Something went wrong while updating task");
 	}
 
-	res.json({ message: "Task updated successfully" }, { updatedTask });
+	res.status(200).json("Task updated successfully");
 });
 
 router.delete("/delete/:id", async (req, res) => {
