@@ -1,9 +1,9 @@
 {
 	"development": {
-		"username": "root",
-		"password": "dt97zsutvq",
-		"database": "task_manager_db",
-		"host": "127.0.0.1",
+		"username": "sql6705693",
+		"password": "ICbs7C6Qpj",
+		"database": "sql6705693",
+		"host": "sql6.freesqldatabase.com",
 		"dialect": "mysql"
 	},
 	"test": {

@@ -29,10 +29,10 @@ router.post("/register", async (req, res) => {
 
 	const tokenData = {
 		user: {
-			id: loggedInUser.id,
-			name: loggedInUser.name,
-			email: loggedInUser.email,
-			role: loggedInUser.role,
+			id: createdUser.id,
+			name: createdUser.name,
+			email: createdUser.email,
+			role: createdUser.role,
 		},
 	};
 
@@ -40,7 +40,12 @@ router.post("/register", async (req, res) => {
 		expiresIn: "3d",
 	});
 
-	res.json({ token, user: createdUser });
+	// res.cookie("token", token, {
+	// 	httpOnly: true,
+	// 	secure: process.env.NODE_ENV === "production",
+	// });
+
+	res.json({ jwt_token: token, user: createdUser });
 });
 
 router.post("/login", async (req, res) => {
@@ -86,18 +91,36 @@ router.post("/login", async (req, res) => {
 		expiresIn: "3d",
 	});
 
-	res.json({ token, user: loggedInUser });
+	res.json({ jwt_token: token, user: loggedInUser });
+});
+
+router.get("/verify-token", async (req, res) => {
+	const token = req.headers["authorization"]?.split(" ")[1];
+	console.log(token);
+	if (!token) {
+		res.header("Cache-Control", "no-store");
+		return res.status(401).json("Unauthorized1");
+	}
+
+	const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+	if (!decoded) {
+		res.header("Cache-Control", "no-store");
+		return res.status(401).json("Unauthorized2");
+	}
+
+	const user = await Users.findOne({
+		where: { id: decoded.user.id },
+		attributes: { exclude: ["password", "createdAt", "updatedAt"] },
+	});
+	if (!user) {
+		res.header("Chache-Control", "no-store");
+		return res.status(401).json("Unauthorized3");
+	}
+
+	res.json({ user });
 });
 
 router.post("/logout", async (req, res) => {
-	const { id } = req.body;
-
-	const user = await Users.findOne({ where: { id } });
-
-	if (!user) {
-		return res.status(400).json("User does not exist");
-	}
-
 	res.json("User logged out");
 });
 
