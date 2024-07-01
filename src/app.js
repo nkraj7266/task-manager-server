@@ -1,15 +1,15 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
+const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 
 // Middleware
+app.use(helmet());
 app.use(
 	cors({
 		exposedHeaders: ["Authorization"],
-		origin: (origin, callback) => {
-			callback(null, true);
-		},
+		origin: process.env.CORS_ORIGIN || "*",
 		credentials: true,
 	})
 );

@@ -2,126 +2,154 @@ const express = require("express");
 const router = express.Router();
 const { Users } = require("../models");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const { body, validationResult } = require("express-validator");
+const asyncHandler = require("express-async-handler");
 
-router.post("/register", async (req, res) => {
-	const { name, email, password } = req.body;
-
-	if (!name || !email || !password) {
-		return res.status(400).json("All fields are required");
-	}
-
-	const existingUser = await Users.findOne({ where: { email } });
-
-	if (existingUser) {
-		return res.status(400).json("User already exists");
-	}
-
-	const user = await Users.create({ name, email, password });
-
-	const createdUser = await Users.findOne({
-		where: { email },
-		attributes: { exclude: ["password"] },
-	});
-
-	if (!createdUser) {
-		return res.status(400).json("Something went wrong while creating user");
-	}
-
+// Utility function to generate JWT token
+const generateToken = (user) => {
 	const tokenData = {
 		user: {
-			id: createdUser.id,
-			name: createdUser.name,
-			email: createdUser.email,
-			role: createdUser.role,
+			id: user.id,
+			name: user.name,
+			email: user.email,
+			role: user.role,
 		},
 	};
 
-	const token = jwt.sign(tokenData, process.env.TOKEN_SECRET, {
+	return jwt.sign(tokenData, process.env.TOKEN_SECRET, {
 		expiresIn: "3d",
 	});
+};
 
-	// res.cookie("token", token, {
-	// 	httpOnly: true,
-	// 	secure: process.env.NODE_ENV === "production",
-	// });
+// Register route
+router.post(
+	"/register",
+	[
+		body("name").notEmpty().withMessage("Name is required"),
+		body("email").isEmail().withMessage("Valid email is required"),
+		body("password")
+			.isLength({ min: 6 })
+			.withMessage("Password must be at least 6 characters long"),
+	],
+	asyncHandler(async (req, res) => {
+		const errors = validationResult(req);
+		if (!errors.isEmpty()) {
+			return res.status(400).json({ errors: errors.array() });
+		}
 
-	res.json({ jwt_token: token, user: createdUser });
-});
+		const { name, email, password } = req.body;
 
-router.post("/login", async (req, res) => {
-	const { email, password } = req.body;
+		const existingUser = await Users.findOne({ where: { email } });
 
-	if (!email || !password) {
-		return res.status(400).json("All fields are required");
-	}
+		if (existingUser) {
+			return res.status(400).json({ message: "User already exists" });
+		}
 
-	const user = await Users.findOne({ where: { email } });
+		const hashedPassword = await bcrypt.hash(password, 10);
+		const user = await Users.create({
+			name,
+			email,
+			password: hashedPassword,
+		});
 
-	if (!user) {
-		return res.status(400).json("User does not exist");
-	}
+		const createdUser = await Users.findOne({
+			where: { email },
+			attributes: { exclude: ["password"] },
+		});
 
-	if (user.role != "user") {
-		return res.status(400).json("Unauthorized access");
-	}
+		if (!createdUser) {
+			return res
+				.status(500)
+				.json({ message: "Something went wrong while creating user" });
+		}
 
-	if (user.password != password) {
-		return res.status(400).json("Invalid credentials");
-	}
+		const token = generateToken(createdUser);
 
-	const loggedInUser = await Users.findOne({
-		where: { email },
-		attributes: { exclude: ["password", "createdAt", "updatedAt"] },
-	});
+		res.json({ jwt_token: token, user: createdUser });
+	})
+);
 
-	if (!loggedInUser) {
-		return res.status(400).json("Something went wrong while logging in");
-	}
+// Login route
+router.post(
+	"/login",
+	[
+		body("email").isEmail().withMessage("Valid email is required"),
+		body("password").notEmpty().withMessage("Password is required"),
+	],
+	asyncHandler(async (req, res) => {
+		const errors = validationResult(req);
+		if (!errors.isEmpty()) {
+			return res.status(400).json({ errors: errors.array() });
+		}
 
-	const tokenData = {
-		user: {
-			id: loggedInUser.id,
-			name: loggedInUser.name,
-			email: loggedInUser.email,
-			role: loggedInUser.role,
-		},
-	};
+		const { email, password } = req.body;
 
-	const token = jwt.sign(tokenData, process.env.TOKEN_SECRET, {
-		expiresIn: "3d",
-	});
+		const user = await Users.findOne({ where: { email } });
 
-	res.json({ jwt_token: token, user: loggedInUser });
-});
+		if (!user) {
+			return res.status(400).json({ message: "User does not exist" });
+		}
 
-router.get("/verify-token", async (req, res) => {
-	const token = req.headers["authorization"]?.split(" ")[1];
-	console.log(token);
-	if (!token) {
-		res.header("Cache-Control", "no-store");
-		return res.status(401).json("Unauthorized1");
-	}
+		if (user.role !== "user") {
+			return res.status(403).json({ message: "Unauthorized access" });
+		}
 
-	const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-	if (!decoded) {
-		res.header("Cache-Control", "no-store");
-		return res.status(401).json("Unauthorized2");
-	}
+		const isMatch = await bcrypt.compare(password, user.password);
+		if (!isMatch) {
+			return res.status(400).json({ message: "Invalid credentials" });
+		}
 
-	const user = await Users.findOne({
-		where: { id: decoded.user.id },
-		attributes: { exclude: ["password", "createdAt", "updatedAt"] },
-	});
-	if (!user) {
-		res.header("Chache-Control", "no-store");
-		return res.status(401).json("Unauthorized3");
-	}
+		const loggedInUser = await Users.findOne({
+			where: { email },
+			attributes: { exclude: ["password", "createdAt", "updatedAt"] },
+		});
 
-	res.json({ user });
-});
+		if (!loggedInUser) {
+			return res
+				.status(500)
+				.json({ message: "Something went wrong while logging in" });
+		}
 
-router.post("/logout", async (req, res) => {
-	res.json("User logged out");
+		const token = generateToken(loggedInUser);
+
+		res.json({ jwt_token: token, user: loggedInUser });
+	})
+);
+
+// Verify token route
+router.get(
+	"/verify-token",
+	asyncHandler(async (req, res) => {
+		const token = req.headers["authorization"]?.split(" ")[1];
+		if (!token) {
+			res.header("Cache-Control", "no-store");
+			return res.status(401).json({ message: "Unauthorized" });
+		}
+
+		try {
+			const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+			const user = await Users.findOne({
+				where: { id: decoded.user.id },
+				attributes: { exclude: ["password", "createdAt", "updatedAt"] },
+			});
+
+			if (!user) {
+				res.header("Cache-Control", "no-store");
+				return res.status(401).json({ message: "Unauthorized" });
+			}
+
+			res.json({ user });
+		} catch (err) {
+			res.header("Cache-Control", "no-store");
+			return res.status(401).json({ message: "Unauthorized" });
+		}
+	})
+);
+
+// Logout route
+router.post("/logout", (req, res) => {
+	res.json({ message: "User logged out" });
 });
 
 module.exports = router;
